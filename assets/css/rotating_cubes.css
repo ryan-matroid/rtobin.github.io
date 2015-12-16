@@ -1,0 +1,20 @@
+#container {
+	/*overflow: hidden;*/
+	/*background-image: url("../img/badassepiclandscape.jpg");*/
+	/*background-size: 100%;*/
+  background-repeat: no-repeat;
+}
+
+#headerwrap canvas {
+	opacity: .4;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+
+}
+
+
+#headerwrap {
+  /*background: transparent;*/
+}
