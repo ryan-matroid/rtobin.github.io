@@ -82,9 +82,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar-default {
-  background: aliceblue;
-  opacity: .5;
-  border-radius: 5px;
+  background-color: transparent;
+
 	border-color: transparent;
 }
 
@@ -99,6 +98,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar-nav {
+  background-color: aliceblue;
+  opacity: .5;
+  border: 2px solid white;
+  border-radius: 5px;
   font-size: 20px;
 }
 
