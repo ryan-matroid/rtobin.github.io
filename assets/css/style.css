@@ -288,3 +288,7 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-transform: scaleX(1);
   transform: scaleX(1);
 }
+
+.col-lg-2 {
+  display: inline-block;
+}
