@@ -1,0 +1,488 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>3d Asteroids</title>
+		<meta charset="utf-8">
+		<style>
+			body {
+				color: #808080;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+
+				background-color: #ffffff;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+      #cockpit {
+        content: "";
+        background-image: url("images/x_wing_cockpit1_better_viewing_wider.png");
+        left: 0;
+        bottom: 0;
+        right: 0;
+				/*top: 0;*/
+				height: 100%;
+				/*width: 100%;*/
+        position: fixed;
+        background-repeat: no-repeat;
+				background-size: contain;
+        /*background-size:contain;*/
+        display: none;
+      }
+
+			.position-info-box {
+				width: 50px;
+				height: 150px;
+				background: white;
+				top: 0px;
+				right: 0px;
+				font-size: 12px;
+				color: black;
+				display: none;
+			}
+
+			#position-info {
+				display: inline;
+				display: none;
+			}
+
+			#radar {
+				width: 100px;
+				height: 100px;
+				background: black;
+				top: 75%;
+				right: 46.1%;
+				font-size: 12px;
+				color: white;
+				position: absolute;
+				display: none;
+			}
+
+			#radar-pt {
+				display: inline-block;
+				font-size: 8px;
+			}
+
+			#back-button {
+				position: absolute;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="container">
+      <div id="cockpit"></div>
+			<a href="../index.html"><button id="back-button">< Home</button></a>
+			<div class="position-info-box">
+				position
+				<input type="text" id="positionx-info" value='' />
+				<input type="text" id="positiony-info" value='' />
+				<input type="text" id="positionz-info" value='' />
+			</div>
+			<div id="radar">
+				<div id="radar-pt">*</div>
+			</div>
+    </div>
+
+		<script src="js/three.min.js"></script>
+    <script src="js/jquery.min.js"></script>
+
+
+		<script src="js/renderers/Projector.js"></script>
+		<script src="js/renderers/CanvasRenderer.js"></script>
+    <script src="js/controls/FirstPersonControls.js"></script>
+
+		<script>
+
+			var container;
+			var camera, cameraVector, scene, renderer;
+      var controls, sunLight, lightSphere;
+			var earthGroup, sunGroup, cosmosGroup, asteroidsGroup;
+      var earthSphere, sunSphere, asteroidSphere, skyBox;
+			var skyTexture;
+      var amountOfAsteroids = 10, asteroidPositions, asteroidVelocities;
+			var asteroidDistance = 3000;
+			var cubeObjectsGroup;
+
+      var clock = new THREE.Clock();
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 100000 );
+				camera.position.z = 500;
+
+				scene = new THREE.Scene();
+
+        controls = new THREE.FirstPersonControls( camera );
+				controls.movementSpeed = 100;
+				controls.lookSpeed = 0.1;
+
+        sunLight = new THREE.PointLight( 0xffffff, 1, 30 );
+				// sunLight.castShadow = true;
+				// sunLight.shadowCameraNear = 1;
+				// sunLight.shadowCameraFar = 30;
+				// // sunLight.shadowCameraVisible = true;
+				// sunLight.shadowMapWidth = 2048;
+				// sunLight.shadowMapHeight = 1024;
+				// sunLight.shadowBias = 0.01;
+				// sunLight.shadowDarkness = 0.5;
+
+				lightSphere = new THREE.Mesh(
+          new THREE.SphereGeometry( 0.3, 32, 32 ),
+          new THREE.MeshBasicMaterial( { color: 0xffffff } )
+        );
+
+				sunLight.add( lightSphere );
+        sunLight.position.z = -4000
+        scene.add( sunLight )
+
+				// earth
+
+        earthGroup = new THREE.Group();
+				scene.add( earthGroup );
+
+				var loader = new THREE.TextureLoader();
+				loader.load( 'images/land_ocean_ice_cloud_2048.jpg', function ( texture ) {
+
+					var earthGeom = new THREE.SphereGeometry( 200, 20, 20 );
+
+					var earthMaterial = new THREE.MeshBasicMaterial(
+            { map: texture, overdraw: 0.5 }
+            );
+					earthSphere = new THREE.Mesh( earthGeom, earthMaterial );
+          // earthSphere.castShadow = true;
+				  // earthSphere.receiveShadow = true;
+          earthGroup.add( earthSphere );
+
+				} );
+
+        // sun
+
+        sunGroup = new THREE.Group();
+				scene.add( sunGroup );
+
+				var loader = new THREE.TextureLoader();
+				loader.load( 'images/sun_small.jpg', function ( texture ) {
+
+					var geometry = new THREE.SphereGeometry( 500, 100, 100 );
+
+					var material = new THREE.MeshBasicMaterial( { map: texture, overdraw: 0.5 } );
+					sunSphere = new THREE.Mesh( geometry, material );
+          sunSphere.position.z = sunLight.position.z;
+          // sunSphere.castShadow = true;
+				  // sunSphere.receiveShadow = true;
+					sunGroup.add( sunSphere );
+
+				});
+
+
+				// } );
+
+				// radar
+				scene.add(camera);
+				radarGroup = new THREE.Group();
+				camera.add( radarGroup );
+
+				var radarGeometry = new THREE.SphereGeometry( 10, 20, 20 );
+				var radarMaterial = new THREE.MeshNormalMaterial({ color: 0x00FFFF, transparent: true, opacity: 0.5} );
+				var radarMarkGeometry = new THREE.SphereGeometry( 1, 5, 5 );
+				var radarAsteroidMarkMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000} );
+				var radarEarthMarkMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff} );
+
+				radarSphere = new THREE.Mesh( radarGeometry, radarMaterial );
+
+				radarAsteroidMarkSphere = new THREE.Mesh( radarMarkGeometry, radarAsteroidMarkMaterial );
+				radarEarthMarkSphere = new THREE.Mesh( radarMarkGeometry, radarEarthMarkMaterial );
+
+				radarAsteroidMarkSphere.position.z = -11;
+				radarEarthMarkSphere.position.z = -11;
+				radarGroup.add( radarSphere );
+				radarSphere.add( radarAsteroidMarkSphere );
+				radarSphere.add( radarEarthMarkSphere );
+				radarGroup.position.z = -70;
+
+				// gemetric shapes
+				cubeObjectsGroup = new THREE.Group();
+				scene.add( cubeObjectsGroup );
+
+				var geometryCubes = new THREE.BoxGeometry( 100, 100, 100 );
+
+				for ( var i = 0; i < 20; i ++ ) {
+
+					var cubeObject = new THREE.Mesh( geometryCubes, new THREE.MeshBasicMaterial( {
+						color: Math.random() * 0xffffff,
+						opacity: 0.5 ,
+						wireframe: true
+					} ) );
+					cubeObject.position.x = Math.random() * 800 - 400;
+					cubeObject.position.y = Math.random() * 800 - 400;
+					cubeObject.position.z = Math.random() * 800 - 400;
+
+					cubeObject.scale.x = Math.random() * 2 + 1;
+					cubeObject.scale.y = Math.random() * 2 + 1;
+					cubeObject.scale.z = Math.random() * 2 + 1;
+
+					cubeObject.rotation.x = Math.random() * 2 * Math.PI;
+					cubeObject.rotation.y = Math.random() * 2 * Math.PI;
+					cubeObject.rotation.z = Math.random() * 2 * Math.PI;
+
+					cubeObjectsGroup.add( cubeObject );
+					cubeObjectsGroup.position.z = 1500;
+					cubeObjectsGroup.position.x = 800;
+
+					// objects.push( cubeObject );
+
+				}
+
+        //starry sky
+        cosmosGroup = new THREE.Group();
+				scene.add( cosmosGroup );
+
+				var loader = new THREE.TextureLoader();
+				loader.load( 'images/wide_field_view_of_the_sky_small.jpg', function ( skyTexture ) {
+          var settingMaterials = [
+  					new THREE.MeshBasicMaterial( { map: skyTexture, overdraw: 0.5 } ), // right
+  					new THREE.MeshBasicMaterial( { map: skyTexture, overdraw: 0.5 } ), // left
+  					new THREE.MeshBasicMaterial( { map: skyTexture, overdraw: 0.5 } ), // top
+  					new THREE.MeshBasicMaterial( { map: skyTexture, overdraw: 0.5 } ), // bottom
+  					new THREE.MeshBasicMaterial( { map: skyTexture, overdraw: 0.5 } ), // back
+  					new THREE.MeshBasicMaterial( { map: skyTexture, overdraw: 0.5 } )  // front
+  				];
+  				skyBox = new THREE.Mesh(
+            new THREE.BoxGeometry( 10000, 10000, 10000, 7, 7, 7 ),
+            new THREE.MeshFaceMaterial( settingMaterials )
+          );
+  				skyBox.scale.x = - 1;
+  				cosmosGroup.add(skyBox);
+
+					// asteroid
+
+	        asteroidGroup = new THREE.Group();
+					scene.add( asteroidGroup );
+
+					var geometry = new THREE.SphereGeometry( 50, 20, 20 );
+					// var material = new Three.MeshNormalMaterial ()
+					var material = new THREE.MeshBasicMaterial({
+						color: "black",
+						transparent: true,
+						opacity: .6
+					});
+					// var material = new THREE.MeshBasicMaterial( {
+					// 	color: 0xffffff,
+					// 	envMap: textureCube,
+					// 	refractionRatio: 0.95
+					// } );
+					// var material = new THREE.MeshBasicMaterial( { map: texture, overdraw: 0.5 } );
+					asteroidSphere = new THREE.Mesh( geometry, material );
+	        asteroidSphere.position.z = asteroidDistance;
+	        // asteroidSphere.castShadow = true
+					asteroidGroup.add( asteroidSphere );
+				} );
+
+        // createAsteroids();
+
+
+
+
+				renderer = new THREE.CanvasRenderer();
+				renderer.setClearColor( 0xffffff );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+        // renderer.shadowMap.enabled = true;
+				// renderer.shadowMap.type = THREE.BasicShadowMap;
+
+
+        container.appendChild( renderer.domElement );
+
+				//document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+        jQuery(document).keydown(function (e) {
+          var prevent = true;
+          // Update the state of the attached control to "true"
+          switch (e.keyCode) {
+            // spacebar == "fire weapon"
+            case 32:
+              fireTorpedo()
+              break;
+            default:
+              prevent = false;
+          }
+          // Avoid the browser to react unexpectedly
+          if (prevent) {
+            e.preventDefault();
+          } else {
+            return;
+          }
+
+        });
+			}
+
+      function createAsteroids() {
+        //create asteroids with buffer geometry
+
+				asteroidPositions = new Float32Array( amountOfAsteroids * 3 );
+        asteroidVelocities = new Float32Array( amountOfAsteroids * 3 );
+
+        var geometry = new THREE.SphereGeometry( 100, 10, 10 );
+        var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+				_asteroidGeom = new THREE.BufferGeometry();
+				_asteroidGeom.addAttribute( 'position', new THREE.BufferAttribute( asteroidPositions, 3 ) );
+				// _asteroidGeom.addAttribute( 'velocity', new THREE.BufferAttribute( asteroidVelocities, 3 ) );
+
+				asteroids = new THREE.Mesh( _asteroidGeom, material );
+
+				for (var i = 0; i < amountOfAsteroids; i++) {
+
+          // random positions
+					asteroidPositions[ i * 3 + 0 ] = Math.random() * 1000;
+					asteroidPositions[ i * 3 + 1 ] = Math.random() * 1000;
+					asteroidPositions[ i * 3 + 2 ] = Math.random() * 1000;
+
+          // random velocities
+          asteroidVelocities[ i * 3 + 0 ] = Math.random() * 10 - 10;
+					asteroidVelocities[ i * 3 + 1 ] = Math.random() * 10 - 10;
+					asteroidVelocities[ i * 3 + 2 ] = Math.random() * 10 - 10;
+        }
+
+        // scene.add(asteroids);
+      }
+
+      function fireTorpedo() {
+        var torpedo = new THREE.PointLight( 0xffffff, 1, 30 );
+
+        torpedo.add( lightSphere );
+        torpedo.position.z = camera.position.z;
+        torpedo.position.y = camera.position.y;
+        torpedo.position.x = camera.position.x;
+        scene.add( torpedo );
+      }
+
+			function objectPositionToCamera2D(obj, camera)
+			{
+			    var vector = new THREE.Vector3();
+
+			    var widthHalf = 0.5*renderer.context.canvas.width;
+			    var heightHalf = 0.5*renderer.context.canvas.height;
+
+			    obj.updateMatrixWorld();
+			    vector.setFromMatrixPosition(obj.matrixWorld);
+			    vector.project(camera);
+
+			    vector.x = ( vector.x * widthHalf ) + widthHalf;
+			    vector.y = - ( vector.y * heightHalf ) + heightHalf;
+
+			    return {
+			        x: vector.x,
+			        y: vector.y
+			    };
+
+			}
+
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+        controls.handleResize();
+			}
+
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+        controls.update( clock.getDelta() );
+
+				render();
+
+			}
+
+			function getUnitCameraPerspectiveVector() {
+				var cameraVector = new THREE.Vector3(0, 0, -1);
+				cameraVector.applyQuaternion( camera.quaternion );
+				cameraVector.normalize();
+				return cameraVector;
+			}
+
+			function getUnitVecBetweenObjects(object1, object2) {
+				var vector = new THREE.Vector3();
+				vector.subVectors(object1.position, object2.position);
+				vector.normalize();
+				return vector;
+			}
+
+			function getRotatedVecFromCameraToObject( object ) {
+				var cameraVector = getUnitCameraPerspectiveVector();
+				var vec = getUnitVecBetweenObjects( object, camera );
+				var newVec = new THREE.Vector3(0, 0, -1);
+				var quaternion = new THREE.Quaternion().setFromUnitVectors( cameraVector, vec );
+				// quaternion.inverse()
+				newVec.applyQuaternion(quaternion);
+				return newVec;
+			}
+
+			function render() {
+				var radarAsteroidMarkVec = getRotatedVecFromCameraToObject( asteroidSphere );
+				var radarEarthMarkVec = getRotatedVecFromCameraToObject( earthGroup );
+
+				// place vector on radar sphere surface
+				radarAsteroidMarkVec.multiplyScalar(11);
+				radarEarthMarkVec.multiplyScalar(11)
+
+				radarAsteroidMarkSphere.position.copy( radarAsteroidMarkVec );
+				radarEarthMarkSphere.position.copy( radarEarthMarkVec );
+
+				// earth rotates too!
+				earthGroup.rotation.y += 0.001;
+				cubeObjectsGroup.rotation.y += 0.001;
+				cubeObjectsGroup.rotation.z += 0.005;
+
+
+				// asteroid flies around a giant sphere
+				asteroidSphere.position.x = Math.cos(earthGroup.rotation.y / 3) *
+													Math.sin(earthGroup.rotation.y ) * asteroidDistance;
+				asteroidSphere.position.y = Math.sin(earthGroup.rotation.y / 3) *
+													Math.sin(earthGroup.rotation.y ) * asteroidDistance;
+				asteroidSphere.position.z = Math.cos(earthGroup.rotation.y ) * asteroidDistance;
+				// $("#positionx-info").val(asteroidSphere.position.x);
+				// $("#positiony-info").val(asteroidSphere.position.y);
+				// $("#positionz-info").val(asteroidSphere.position.z);
+				// $("#positionx-info").val(cameraVector.x);
+				// $("#positiony-info").val(cameraVector.y);
+				// $("#positionz-info").val(cameraVector.z);
+				// $("#positionx-info").val(asteroidVector.x);
+				// $("#positiony-info").val(asteroidVector.y);
+				// $("#positionz-info").val(asteroidVector.z);
+
+        // for (var i = 0; i < amountOfAsteroids; i++) {
+        //   if (asteroidPositions[ i * 3 + 0 ] > 5000) { asteroidVelocities[ i * 3 + 0 ] *= -1}
+        //   if (asteroidPositions[ i * 3 + 1 ] > 5000) { asteroidVelocities[ i * 3 + 1 ] *= -1}
+        //   if (asteroidPositions[ i * 3 + 2 ] > 5000) { asteroidVelocities[ i * 3 + 2 ] *= -1}
+        //
+        //   asteroidPositions[ i * 3 + 0 ] += asteroidVelocities[ i * 3 + 0 ];
+				// 	asteroidPositions[ i * 3 + 1 ] += asteroidVelocities[ i * 3 + 1 ];
+				// 	asteroidPositions[ i * 3 + 2 ] += asteroidVelocities[ i * 3 + 2 ];
+        // }
+
+				renderer.render( scene, camera );
+
+			}
+
+
+
+
+		</script>
+
+	</body>
+</html>

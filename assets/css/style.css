@@ -292,3 +292,7 @@ h1, h2, h3, h4, h5, h6 {
 .col-lg-2 {
   display: inline-block;
 }
+
+#some-stuff-about-me p {
+  text-align: left;
+}
